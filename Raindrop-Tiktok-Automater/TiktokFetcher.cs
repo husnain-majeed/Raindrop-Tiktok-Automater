@@ -5,13 +5,19 @@ using System.Threading.Tasks;
 
 namespace Raindrop_Tiktok_Automater
 {
-     class Program
-     {
-        static async Task Main(string[] args)
-        {
-            const string url = "https://snaptik.app/";
-            string tiktokUrl = "https://vm.tiktok.com/ZMYYg2edw/";
+     class TiktokFetcher
+     { 
+       const string _url = "https://snaptik.app/";
+       readonly string _videoUrl;
+       string[] _allUrls = null;
 
+       public TiktokFetcher(string videoUrl)
+        {
+           _videoUrl = videoUrl;
+        }
+
+        public async Task Fetch()
+        { 
             using var browserFetcher = new BrowserFetcher();
             await browserFetcher.DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
                
@@ -26,19 +32,20 @@ namespace Raindrop_Tiktok_Automater
             page.Request += Page_Request;
             page.Response += Page_Response;
 
-            await page.GoToAsync(url);
+            await page.GoToAsync(_url);
 
             var downloadUrlSelector = "#url";
             await page.WaitForSelectorAsync(downloadUrlSelector);
 
             var downloadButtonSelector = ".btn-go";
-            await TypeFieldValue(page, downloadUrlSelector, tiktokUrl);
+            await TypeFieldValue(page, downloadUrlSelector, _videoUrl);
             await clickButtton(page, downloadButtonSelector);
 
             var downloadButtonSelector2 = ".btn-main";
             await page.WaitForSelectorAsync(downloadButtonSelector2);
             var jsSelectAllAnchors = @"Array.from(document.querySelectorAll('.btn-main')).map(a => a.href);";
             var urls = await page.EvaluateExpressionAsync<string[]>(jsSelectAllAnchors);
+            _allUrls = urls;
 
         }
          private static async void Page_Response(object sender, ResponseCreatedEventArgs e)
@@ -61,5 +68,15 @@ namespace Raindrop_Tiktok_Automater
         {
             await page.ClickAsync(buttonSelector);
         }
+
+        public string[] Return()
+        {
+            if (_allUrls == null)
+                throw new InvalidOperationException("Please run fetch method first");
+
+            return _allUrls;
+        }
+
      }
+
 }
