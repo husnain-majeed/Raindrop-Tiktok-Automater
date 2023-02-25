@@ -44,8 +44,7 @@ namespace Raindrop_Tiktok_Automater
             var downloadButtonSelector2 = ".btn-main";
             await page.WaitForSelectorAsync(downloadButtonSelector2);
             var jsSelectAllAnchors = @"Array.from(document.querySelectorAll('.btn-main')).map(a => a.href);";
-            var urls = await page.EvaluateExpressionAsync<string[]>(jsSelectAllAnchors);
-            _allUrls = urls;
+            _allUrls = await page.EvaluateExpressionAsync<string[]>(jsSelectAllAnchors);
 
         }
          private static async void Page_Response(object sender, ResponseCreatedEventArgs e)
