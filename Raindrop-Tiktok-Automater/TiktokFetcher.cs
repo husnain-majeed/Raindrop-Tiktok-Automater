@@ -7,20 +7,20 @@ namespace Raindrop_Tiktok_Automater
 {
      class TiktokFetcher
      { 
-       const string _url = "https://snaptik.app/";
+       const string _downloaderUrl = "https://snaptik.app/";
        readonly string _videoUrl;
-       string[] _allUrls = null;
+       string[] _allUrls = Array.Empty<string>();
 
        public TiktokFetcher(string videoUrl)
-        {
-           _videoUrl = videoUrl;
-        }
+       {
+          _videoUrl = videoUrl;
+       }
 
-        public async Task Fetch()
+        public async Task<string[]> FetchDownloadLinks()
         { 
             using var browserFetcher = new BrowserFetcher();
             await browserFetcher.DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
-               
+
             var browser = await Puppeteer.LaunchAsync(new LaunchOptions
             {
                 Headless = false,
@@ -32,24 +32,31 @@ namespace Raindrop_Tiktok_Automater
             page.Request += Page_Request;
             page.Response += Page_Response;
 
-            await page.GoToAsync(_url);
+           // while (page == null) {};
+
+            await page.GoToAsync(_downloaderUrl);
 
             var downloadUrlSelector = "#url";
             await page.WaitForSelectorAsync(downloadUrlSelector);
 
             var downloadButtonSelector = ".btn-go";
             await TypeFieldValue(page, downloadUrlSelector, _videoUrl);
-            await clickButtton(page, downloadButtonSelector);
+            await clickButton(page, downloadButtonSelector);
 
-            var downloadButtonSelector2 = ".btn-main";
+            var downloadButtonSelector2 = ".mb-2";
             await page.WaitForSelectorAsync(downloadButtonSelector2);
-            var jsSelectAllAnchors = @"Array.from(document.querySelectorAll('.btn-main')).map(a => a.href);";
-            _allUrls = await page.EvaluateExpressionAsync<string[]>(jsSelectAllAnchors);
+            var jsSelectAllAnchors = @"Array.from(document.querySelectorAll('.mb-2')).map(a => a.href);";
+            _allUrls =  await page.EvaluateExpressionAsync<string[]>(jsSelectAllAnchors);
+
+            if (_allUrls == null)
+                throw new InvalidOperationException("Error string is null");
+
+            return _allUrls;
 
         }
-         private static async void Page_Response(object sender, ResponseCreatedEventArgs e)
+         private static void Page_Response(object sender, ResponseCreatedEventArgs e)
          {
-            Console.WriteLine(e.Response.Status);
+             Console.WriteLine(e.Response.Status);
          }
 
         private static void Page_Request(object sender, RequestEventArgs e)
@@ -63,17 +70,9 @@ namespace Raindrop_Tiktok_Automater
             await page.TypeAsync(fieldSelector, value, new TypeOptions { Delay = delay });
             await page.Keyboard.PressAsync("Tab");
         }
-        private static async Task clickButtton(IPage page, string buttonSelector)
+        private static async Task clickButton(IPage page, string buttonSelector)
         {
             await page.ClickAsync(buttonSelector);
-        }
-
-        public string[] Return()
-        {
-            if (_allUrls == null)
-                throw new InvalidOperationException("Please run fetch method first");
-
-            return _allUrls;
         }
 
      }
