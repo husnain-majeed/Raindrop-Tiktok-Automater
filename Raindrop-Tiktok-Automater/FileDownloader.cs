@@ -6,14 +6,9 @@ using System.Threading.Tasks;
 
 namespace Raindrop_Tiktok_Automater
 {
-    public class FileDownloader
+    public static class FileDownloader
     {
-        public FileDownloader()
-        {
-            
-        }
-
-        public async void UnknownTypeByUrlDownload(string url)
+        public static async void UnknownTypeByUrlDownload(string url)
         {
             using (var client = new HttpClient())
             using (var response = await client.GetAsync(url))
@@ -22,9 +17,14 @@ namespace Raindrop_Tiktok_Automater
 
                 var filename = response.Content.Headers.ContentDisposition.FileName;
 
-                var test = "test";
-   
+                var stream = await response.Content.ReadAsStreamAsync();
 
+                var destinationFile = Path.Combine("D:\\ETC Dump\\tiktok - output", filename);
+
+                using(var fileStream = File.Create(destinationFile))
+                {
+                    await fileStream.CopyToAsync(stream);
+                }
             }
         }
     }

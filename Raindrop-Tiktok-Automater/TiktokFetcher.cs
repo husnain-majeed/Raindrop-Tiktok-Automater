@@ -1,23 +1,16 @@
 ﻿using PuppeteerSharp;
 using PuppeteerSharp.Input;
-using System;
-using System.Threading.Tasks;
 
 namespace Raindrop_Tiktok_Automater
 {
-     class TiktokFetcher
+     static class TiktokFetcher
      { 
        const string _downloaderUrl = "https://snaptik.app/";
-       readonly string _videoUrl;
-       string[] _allUrls = Array.Empty<string>();
+      
+        public static async Task<List<string>> FetchDownloadLinks(string videoUrl)
+        {
+            var allUrls = new List<string>();
 
-       public TiktokFetcher(string videoUrl)
-       {
-          _videoUrl = videoUrl;
-       }
-
-        public async Task<string[]> FetchDownloadLinks()
-        { 
             using var browserFetcher = new BrowserFetcher();
             await browserFetcher.DownloadAsync(BrowserFetcher.DefaultChromiumRevision);
 
@@ -39,37 +32,72 @@ namespace Raindrop_Tiktok_Automater
             var downloadUrlSelector = "#url";
             await page.WaitForSelectorAsync(downloadUrlSelector);
 
-            var downloadButtonSelector = ".btn-go";
-            await TypeFieldValue(page, downloadUrlSelector, _videoUrl);
-            await clickButton(page, downloadButtonSelector);
+            var mainPageDownloadButtonSelector = ".button-go";
+            await TypeFieldValue(page, downloadUrlSelector, videoUrl);
+            await clickButton(page, mainPageDownloadButtonSelector);
 
-            var downloadButtonSelector2 = ".mb-2";
-            await page.WaitForSelectorAsync(downloadButtonSelector2);
-            var jsSelectAllAnchors = @"Array.from(document.querySelectorAll('.mb-2')).map(a => a.href);";
-            _allUrls =  await page.EvaluateExpressionAsync<string[]>(jsSelectAllAnchors);
+            Thread.Sleep(3000);
+            var downloadButtonSelectors = downloadButtonSelectorDetector(page);
 
-            if (_allUrls == null)
+            foreach (var selector in downloadButtonSelectors) 
+            {
+                var jsSelectAllAnchors = $"Array.from(document.querySelectorAll('{selector}')).map(a => a.href);";
+                var urls = await page.EvaluateExpressionAsync<string[]>(jsSelectAllAnchors);
+
+                var urlsList = new List<string>(urls);
+                allUrls = allUrls.Concat(urlsList).ToList();
+
+            }
+
+            if (allUrls == null)
                 throw new InvalidOperationException("Error string is null");
 
-            return _allUrls;
+            return allUrls;
 
         }
-         private static void Page_Response(object sender, ResponseCreatedEventArgs e)
-         {
-             Console.WriteLine(e.Response.Status);
-         }
+
+        private static List<string> downloadButtonSelectorDetector(IPage page)
+        {
+            page.WaitForSelectorAsync("#thumbnail");
+
+            var results = new List<string>();
+
+            var downloadButtonSelectorVideo = ".download-file"; ;
+            var downloadButtonSelectorSlideShow = ".w100";
+
+            var findingMainButton = page.QuerySelectorAsync(downloadButtonSelectorVideo);
+            findingMainButton.Wait();
+
+            var findingImagesButton = page.QuerySelectorAsync(downloadButtonSelectorSlideShow);
+            findingImagesButton.Wait();
+
+            results.Add(downloadButtonSelectorVideo);
+
+            if (findingImagesButton.Result != null)
+                results.Add(downloadButtonSelectorSlideShow);
+                
+            return results;  
+        }
+
+
+        private static void Page_Response(object sender, ResponseCreatedEventArgs e)
+        {
+           Console.WriteLine(e.Response.Status);
+        }
 
         private static void Page_Request(object sender, RequestEventArgs e)
         {
             Console.WriteLine(e.Request.ResourceType.ToString());
             Console.WriteLine(e.Request.Url);
         }
+
         private static async Task TypeFieldValue(IPage page, string fieldSelector, string value, int delay = 0)
         {
             await page.FocusAsync(fieldSelector);
             await page.TypeAsync(fieldSelector, value, new TypeOptions { Delay = delay });
             await page.Keyboard.PressAsync("Tab");
         }
+
         private static async Task clickButton(IPage page, string buttonSelector)
         {
             await page.ClickAsync(buttonSelector);
